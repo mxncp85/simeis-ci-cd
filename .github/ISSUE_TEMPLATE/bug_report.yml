@@ -1,0 +1,45 @@
+name: Rapport de bug
+description: Signaler un défaut dans Simeis
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci d'avoir pris le temps de signaler un bug.
+  - type: input
+    id: summary
+    attributes:
+      label: Résumé
+      description: Description de l'incident en une ligne
+      placeholder: Crash lors de l'achat d'un module de vaisseau
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Étapes pour reproduire
+      description: Liste d'étapes claires et déterministes
+      placeholder: |
+        1. Démarrer le serveur avec ...
+        2. Appeler le point de terminaison ...
+        3. Observer ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportement observé
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environnement
+      description: Système d'exploitation, version de Rust, version de Python, etc.

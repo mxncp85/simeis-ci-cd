@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  dev:
+    # Pour les MR et les pushes hors main
+    if: github.event_name != 'push' || github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run development targets
+        run: make ci-dev
+
+  release:
+    # Une fois mergé dans main, construire les artefacts de release et la documentation.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Typst compiler
+        run: cargo install --locked typst-cli
+
+      - name: Run release targets
+        run: make ci-release
