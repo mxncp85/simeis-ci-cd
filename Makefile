@@ -22,7 +22,6 @@ debug:
 release:
 	@echo Build du projet en mode release avec des commandes rustc détaillées
 	cargo build --workspace --release --verbose
-	strip $(SERVER_BIN_RELEASE) || true
 
 manual:
 	typst compile $(MANUAL_SRC) $(MANUAL_OUT)
