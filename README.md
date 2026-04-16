@@ -1,1 +1,3 @@
-# simeis-ci-cd
+# Simeis
+
+Jeu par API
