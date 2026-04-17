@@ -26,17 +26,13 @@ jobs:
         shell: bash
         run: |
           # Some cargo-edit versions do not support --workspace.
-          # Upgrade each Cargo.toml explicitly for better compatibility.
-          # Some manifests can be intentionally outside the root workspace and
-          # may fail metadata resolution in CI; these are skipped.
-          while IFS= read -r manifest; do
-            if ! cargo metadata --no-deps --manifest-path "$manifest" > /dev/null 2>&1; then
-              echo "Skipping $manifest (cargo metadata failed in current workspace context)."
-              continue
-            fi
-
+          # Update only the manifests that are part of the Rust project.
+          for manifest in \
+            ./Cargo.toml \
+            ./simeis-data/Cargo.toml \
+            ./simeis-server/Cargo.toml; do
             cargo upgrade --incompatible --manifest-path "$manifest"
-          done < <(find . -name Cargo.toml -not -path "./target/*" -not -path "./.git/*")
+          done
 
           cargo update
 
