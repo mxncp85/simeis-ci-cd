@@ -23,8 +23,14 @@ jobs:
         run: cargo install --locked cargo-edit
 
       - name: Update dependencies
+        shell: bash
         run: |
-          cargo upgrade --workspace --incompatible
+          # Some cargo-edit versions do not support --workspace.
+          # Upgrade each Cargo.toml explicitly for better compatibility.
+          while IFS= read -r manifest; do
+            cargo upgrade --incompatible --manifest-path "$manifest"
+          done < <(find . -name Cargo.toml -not -path "./target/*" -not -path "./.git/*")
+
           cargo update
 
       - name: Detect changes
