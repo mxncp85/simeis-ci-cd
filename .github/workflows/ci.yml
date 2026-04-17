@@ -22,6 +22,8 @@ jobs:
     # Une fois mergé dans main, construire les artefacts de release et la documentation.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -31,3 +33,23 @@ jobs:
 
       - name: Run release targets
         run: make ci-release
+
+      - name: Publish release assets (manual + binary)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG="build-${GITHUB_SHA::7}"
+          TITLE="Build ${GITHUB_SHA::7}"
+
+          # Ensure the tag exists remotely before creating the release.
+          git tag "$TAG" || true
+          git push origin "$TAG" || true
+
+          gh release view "$TAG" > /dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TITLE" --notes "Build automatique depuis main."
+
+          gh release upload "$TAG" \
+            doc/manual.pdf \
+            target/release/simeis-server \
+            --clobber
