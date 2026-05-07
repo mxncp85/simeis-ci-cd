@@ -22,6 +22,8 @@ mea = { workspace = true }
 [features]
 default = ["compio"]
 testing = ["simeis-data/testing"]
+# Feature dédiée aux jobs CI lourds (placeholder pour futurs tests avancés).
+heavy-testing = ["testing", "simeis-data/heavy-testing"]
 extraspeed = ["simeis-data/extraspeed"]
 
 # Async runtimes

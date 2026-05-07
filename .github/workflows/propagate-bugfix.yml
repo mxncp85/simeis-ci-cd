@@ -1,0 +1,54 @@
+name: Propagate Bugfix To Releases
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  propagate:
+    # Trigger uniquement si PR mergee depuis bug/x.
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'bug/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create propagation PRs for each propagate:release/x label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')
+          MATCHED=0
+
+          while IFS= read -r LABEL; do
+            if [[ "$LABEL" =~ ^propagate:(release/.+)$ ]]; then
+              TARGET_BRANCH="${BASH_REMATCH[1]}"
+              MATCHED=1
+
+              PROP_BRANCH="propagate/${SOURCE_BRANCH//\//-}-to-${TARGET_BRANCH//\//-}"
+              git fetch origin "$SOURCE_BRANCH" "$TARGET_BRANCH"
+              git checkout -B "$PROP_BRANCH" "origin/$SOURCE_BRANCH"
+              git push -u origin "$PROP_BRANCH" --force-with-lease
+
+              gh pr create \
+                --repo "$REPO" \
+                --head "$PROP_BRANCH" \
+                --base "$TARGET_BRANCH" \
+                --title "propagate: ${SOURCE_BRANCH} -> ${TARGET_BRANCH}" \
+                --body "Propagation automatique des corrections mergees dans #${PR_NUMBER}."
+            fi
+          done <<< "$LABELS"
+
+          if [ "$MATCHED" -eq 0 ]; then
+            echo "Aucun label propagate:release/x detecte."
+          fi
