@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Validate TODO issue references
         env:
@@ -28,10 +30,38 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Recherche tous les TODO dans les fichiers suivis.
-          TODO_LINES=$(git grep -n "TODO" || true)
-          if [ -z "$TODO_LINES" ]; then
-            echo "Aucun TODO detecte."
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+
+          if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "0000000000000000000000000000000000000000" ]; then
+            echo "Impossible de determiner un commit de base fiable. Controle TODO ignore."
+            exit 0
+          fi
+
+          echo "Analyse des TODO introduits entre ${BASE_SHA} et ${HEAD_SHA}."
+          TODO_LINES=$(
+            git diff --unified=0 "${BASE_SHA}" "${HEAD_SHA}" -- \
+              '*.rs' '*.py' '*.js' '*.ts' '*.tsx' '*.jsx' '*.md' '*.yml' '*.yaml' '*.toml' \
+              ':(exclude)doc/swagger-ui.html' \
+            | awk '
+                /^\+\+\+ b\// { file=substr($0, 7); next }
+                /^\+/ && !/^\+\+\+/ {
+                  line=$0
+                  sub(/^\+/, "", line)
+                  if (line ~ /TODO/) {
+                    print file ":?: " line
+                  }
+                }
+              '
+          )
+
+          if [ -z "${TODO_LINES}" ]; then
+            echo "Aucun TODO ajoute ou modifie."
             exit 0
           fi
 
@@ -39,7 +69,7 @@ jobs:
           while IFS= read -r ENTRY; do
             [ -z "$ENTRY" ] && continue
 
-            LINE_TEXT="${ENTRY#*:*:}"
+            LINE_TEXT="${ENTRY#*:?: }"
             if [[ "$LINE_TEXT" =~ TODO[[:space:]]+\(#([0-9]+)\) ]]; then
               ISSUE_NUMBER="${BASH_REMATCH[1]}"
               ISSUE_STATE=$(gh api "repos/${REPO}/issues/${ISSUE_NUMBER}" --jq '.state' 2>/dev/null || echo "missing")
