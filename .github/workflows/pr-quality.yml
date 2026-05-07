@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Install Rust toolchain and components
         shell: bash
@@ -40,11 +42,14 @@ jobs:
       - name: Check Python formatting (files used for tests)
         shell: bash
         run: |
-          FILES=$(git ls-files '*.py' | tr '\n' ' ')
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          FILES=$(git diff --name-only --diff-filter=ACMR "${BASE_SHA}" "${HEAD_SHA}" -- '*.py' | tr '\n' ' ')
           if [ -z "$FILES" ]; then
-            echo "Aucun fichier Python à vérifier."
+            echo "Aucun fichier Python modifie dans cette PR."
             exit 0
           fi
+          echo "Verification Black sur: $FILES"
           python -m black --check $FILES
 
   review-required:
