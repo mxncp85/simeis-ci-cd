@@ -1,0 +1,63 @@
+name: TODO Issue Check
+
+on:
+  pull_request:
+    branches:
+      - "**"
+  push:
+    branches:
+      - main
+      - "release/**"
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  check-todos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate TODO issue references
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Recherche tous les TODO dans les fichiers suivis.
+          TODO_LINES=$(git grep -n "TODO" || true)
+          if [ -z "$TODO_LINES" ]; then
+            echo "Aucun TODO detecte."
+            exit 0
+          fi
+
+          FAILED=0
+          while IFS= read -r ENTRY; do
+            [ -z "$ENTRY" ] && continue
+
+            LINE_TEXT="${ENTRY#*:*:}"
+            if [[ "$LINE_TEXT" =~ TODO[[:space:]]+\(#([0-9]+)\) ]]; then
+              ISSUE_NUMBER="${BASH_REMATCH[1]}"
+              ISSUE_STATE=$(gh api "repos/${REPO}/issues/${ISSUE_NUMBER}" --jq '.state' 2>/dev/null || echo "missing")
+
+              if [ "$ISSUE_STATE" = "missing" ]; then
+                echo "Erreur: issue #${ISSUE_NUMBER} introuvable pour TODO -> ${ENTRY}"
+                FAILED=1
+              elif [ "$ISSUE_STATE" != "open" ]; then
+                echo "Erreur: issue #${ISSUE_NUMBER} fermee pour TODO -> ${ENTRY}"
+                FAILED=1
+              fi
+            else
+              echo "Erreur: TODO sans reference d'issue valide -> ${ENTRY}"
+              FAILED=1
+            fi
+          done <<< "$TODO_LINES"
+
+          if [ "$FAILED" -ne 0 ]; then
+            echo "Des TODO non conformes ont ete detectes."
+            exit 1
+          fi

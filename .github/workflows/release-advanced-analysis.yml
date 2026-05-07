@@ -1,0 +1,44 @@
+name: Release Advanced Analysis
+
+on:
+  push:
+    branches:
+      - "release/**"
+
+permissions:
+  contents: read
+
+jobs:
+  advanced-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain and components
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup toolchain install nightly --profile minimal
+
+      - name: Run unit tests with heavy-testing feature
+        run: cargo test --workspace --features heavy-testing
+
+      - name: Build debug binaries with heavy-testing feature
+        run: cargo build --workspace --features heavy-testing
+
+      - name: Execute functional test skeleton
+        run: python tests/functional/run_functional_tests.py
+
+      - name: Install cargo-audit
+        run: cargo install --locked cargo-audit
+
+      - name: Audit dependencies for vulnerabilities
+        run: cargo audit
+
+      - name: Install cargo-udeps
+        run: cargo install --locked cargo-udeps
+
+      - name: Check unused dependencies
+        run: cargo +nightly udeps --workspace --all-targets

@@ -1,0 +1,32 @@
+name: PR Release Source Guard
+
+on:
+  pull_request_target:
+    branches:
+      - "release/**"
+    types: [opened, reopened, synchronize, edited, ready_for_review]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  validate-release-pr-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate source branch for release PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          if [[ "$HEAD_REF" == "main" || "$HEAD_REF" =~ ^bug/ ]]; then
+            echo "Source autorisée pour une PR vers release/*."
+            exit 0
+          fi
+
+          MESSAGE="PR fermée automatiquement: une PR vers release/x doit venir de main ou bug/x."
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$MESSAGE"
+          gh pr close "$PR_NUMBER" --repo "$REPO"
+          exit 1
