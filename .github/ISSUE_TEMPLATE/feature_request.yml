@@ -1,0 +1,24 @@
+name: Demande de fonctionnalité
+description: Suggérer une amélioration pour Simeis
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problème rencontré
+      description: Quel problème essayez-vous de résoudre ?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solution proposée
+      description: Décrivez l'approche que vous préférez
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+      description: Alternatives ou contournements optionnels
