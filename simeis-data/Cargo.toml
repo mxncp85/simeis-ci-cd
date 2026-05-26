@@ -18,4 +18,5 @@ mea = { workspace = true }
 [features]
 default = []
 testing = []
+heavy-testing = ["testing"]
 extraspeed = []

@@ -1,0 +1,46 @@
+name: Enforce Branch Protection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protect-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure branch protection on main
+        env:
+          # Utiliser un PAT admin (repo + administration) pour cette opération.
+          # GITHUB_TOKEN est souvent insuffisant pour modifier la protection de branche.
+          GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          cat > protection.json <<'EOF'
+          {
+            "required_status_checks": {
+              "strict": true,
+              "contexts": ["quality", "review-required", "check-todos"]
+            },
+            "enforce_admins": true,
+            "required_pull_request_reviews": {
+              "dismiss_stale_reviews": true,
+              "require_code_owner_reviews": false,
+              "required_approving_review_count": 1
+            },
+            "restrictions": null,
+            "required_linear_history": false,
+            "allow_force_pushes": false,
+            "allow_deletions": false,
+            "block_creations": false,
+            "required_conversation_resolution": true
+          }
+          EOF
+
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${REPO}/branches/main/protection" \
+            --input protection.json

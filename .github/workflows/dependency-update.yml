@@ -23,8 +23,15 @@ jobs:
         run: cargo install --locked cargo-edit
 
       - name: Update dependencies
+        shell: bash
         run: |
-          cargo upgrade --workspace --incompatible
+          for manifest in \
+            ./Cargo.toml \
+            ./simeis-data/Cargo.toml \
+            ./simeis-server/Cargo.toml; do
+            cargo upgrade --incompatible --manifest-path "$manifest"
+          done
+
           cargo update
 
       - name: Detect changes
