@@ -7,7 +7,7 @@ SERVER_BIN_RELEASE := target/release/simeis-server
 MANUAL_SRC := doc/manual.typ
 MANUAL_OUT := doc/manual.pdf
 
-.PHONY: all debug release manual check test functional-test clean show-rustflags ci-dev ci-release
+.PHONY: all debug release manual check test property-test property-test-heavy functional-test clean show-rustflags ci-dev ci-release
 
 all: debug
 
@@ -32,6 +32,12 @@ check:
 test:
 	cargo test --workspace --verbose
 
+property-test:
+	python tests/propertybased.py --time 3
+
+property-test-heavy:
+	python tests/propertybased.py --heavy
+
 functional-test:
 	cargo build -p simeis-server --features testing
 	python tests/functional/run_functional_tests.py
@@ -40,7 +46,7 @@ clean:
 	cargo clean
 
 # CI pour les merge request et les push sur des branches hors main.
-ci-dev: check test functional-test
+ci-dev: check test property-test
 
 # CI une fois merge sur main.
 ci-release: release manual

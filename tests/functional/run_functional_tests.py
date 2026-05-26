@@ -2,8 +2,8 @@
 """
 Tests fonctionnels Simeis.
 
-Lance le serveur en mode `testing` (port 9345), exécute des scénarios API
-via le SDK Python, puis arrête le serveur.
+Lance le serveur en mode `testing` (port 9345), exécute des scénarios utilisateurs
+documentés via le SDK Python, puis arrête le serveur.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT / "tests" / "functional"))
 
-from scenarios import SCENARIOS, unique_username  # noqa: E402
+from scenarios import USER_SCENARIOS, unique_username  # noqa: E402
 from sdk_loader import SimeisSDK  # noqa: E402
 
 DEFAULT_HOST = "127.0.0.1"
@@ -79,16 +79,20 @@ def run_scenarios(host: str, port: int, workspace: Path) -> int:
     os.chdir(workspace)
 
     try:
-        for name, scenario in SCENARIOS:
+        for scenario in USER_SCENARIOS:
             username = unique_username()
-            print(f"[RUN] {name} ({username})")
+            print(f"\n=== Scénario: {scenario.name} ({scenario.mechanic}) ===")
+            for index, step in enumerate(scenario.steps, start=1):
+                print(f"  Plan [{index}] {step.action} -> {step.expected}")
+
+            print(f"[RUN] {scenario.name} ({username})")
             try:
                 sdk = SimeisSDK(username, host, port)
-                scenario(sdk)
-                print(f"[OK]  {name}")
+                scenario.run(sdk)
+                print(f"[OK]  {scenario.name}")
             except Exception as err:
                 failures += 1
-                print(f"[FAIL] {name}: {err}")
+                print(f"[FAIL] {scenario.name}: {err}")
     finally:
         os.chdir(previous_cwd)
 
@@ -130,7 +134,7 @@ def main() -> int:
         print(f"\n{failures} scénario(s) fonctionnel(s) en échec.")
         return 1
 
-    print(f"\nTous les scénarios fonctionnels ({len(SCENARIOS)}) ont réussi.")
+    print(f"\nTous les scénarios fonctionnels ({len(USER_SCENARIOS)}) ont réussi.")
     return 0
 
 

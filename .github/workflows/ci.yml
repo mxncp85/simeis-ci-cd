@@ -21,8 +21,8 @@ jobs:
       - name: Run unit tests
         run: make test
 
-      - name: Run functional tests
-        run: make functional-test
+      - name: Run fast property-based tests
+        run: make property-test
 
   release:
     # Une fois mergé dans main, construire les artefacts de release et la documentation.
@@ -36,9 +36,6 @@ jobs:
 
       - name: Run unit tests
         run: make test
-
-      - name: Run functional tests
-        run: make functional-test
 
       - name: Install Typst compiler
         run: cargo install --locked typst-cli

@@ -28,8 +28,11 @@ jobs:
       - name: Build debug binaries with heavy-testing feature
         run: cargo build --workspace --features heavy-testing
 
-      - name: Execute functional test skeleton
-        run: python tests/functional/run_functional_tests.py
+      - name: Run heavy property-based tests
+        run: python tests/propertybased.py --heavy
+
+      - name: Run functional user scenarios
+        run: make functional-test
 
       - name: Install cargo-audit
         run: cargo install --locked cargo-audit
