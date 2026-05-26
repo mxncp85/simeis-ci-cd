@@ -1,0 +1,16 @@
+# Default owners
+* @mxncp85
+
+# Rust back-end and data model
+/simeis-server/ @mxncp85
+/simeis-data/ @mxncp85
+/rust/ @mxncp85
+
+# Python clients and SDKs
+/python/ @mxncp85
+/example/python/ @mxncp85
+/sdk/python.py @mxncp85
+
+# Documentation and CI
+/doc/ @mxncp85
+/.github/ @mxncp85

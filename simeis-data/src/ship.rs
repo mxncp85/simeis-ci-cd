@@ -355,8 +355,7 @@ fn test_ship_flight() {
             ship.update_flight(costs.duration / 2.0);
             let ShipState::InFlight(flight) = ship.state else {
                 println!("Ship not in flight: {:?}", ship.state);
-                assert!(false);
-                unreachable!();
+                panic!("Ship should be in flight after update_flight");
             };
             assert_eq!(flight.start, (x, y, z));
             assert_eq!(flight.destination, dest);
