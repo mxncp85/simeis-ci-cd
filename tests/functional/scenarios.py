@@ -5,7 +5,6 @@ from typing import Callable
 
 from sdk_loader import SimeisSDK
 
-
 Scenario = Callable[[SimeisSDK], None]
 
 
@@ -18,7 +17,9 @@ def _travel_with_ticks(
     return costs
 
 
-def _travel_destination(sdk: SimeisSDK, station_id: int, station: dict) -> tuple[int, int, int]:
+def _travel_destination(
+    sdk: SimeisSDK, station_id: int, station: dict
+) -> tuple[int, int, int]:
     planets = sdk.scan_planets(station_id)
     if planets:
         pos = planets[0]["position"]
