@@ -6,6 +6,10 @@ on:
       - "**"
     types: [opened, synchronize, reopened, ready_for_review]
 
+concurrency:
+  group: pr-coverage-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
@@ -17,14 +21,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Rust toolchain
-        shell: bash
-        run: |
-          rustup toolchain install stable --profile minimal
-          rustup default stable
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
 
       - name: Install cargo-tarpaulin
-        run: cargo install --locked cargo-tarpaulin
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          crate: cargo-tarpaulin
+          version: v0.32.8
 
       - name: Measure workspace coverage
         id: tarpaulin

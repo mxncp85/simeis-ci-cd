@@ -1,0 +1,41 @@
+name: Install Cargo tool
+description: Install a cargo binary with cache to avoid repeated downloads
+inputs:
+  crate:
+    description: Crate name to install (e.g. cargo-tarpaulin)
+    required: true
+  bin:
+    description: Installed binary name if different from crate (e.g. typst for typst-cli)
+    required: false
+    default: ""
+  version:
+    description: Optional version pin used in cache key
+    required: false
+    default: latest
+runs:
+  using: composite
+  steps:
+    - name: Resolve binary name
+      id: meta
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.bin }}" ]; then
+          echo "bin=${{ inputs.bin }}" >> "$GITHUB_OUTPUT"
+        else
+          echo "bin=${{ inputs.crate }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Cache cargo tool
+      id: tool-cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/${{ steps.meta.outputs.bin }}
+          ~/.cargo/.crates.toml
+          ~/.cargo/.crates2.json
+        key: ${{ runner.os }}-cargo-bin-${{ inputs.crate }}-${{ inputs.version }}
+
+    - name: Install cargo tool
+      if: steps.tool-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install --locked "${{ inputs.crate }}"
