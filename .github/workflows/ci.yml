@@ -15,8 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Run development targets
-        run: make ci-dev
+      - name: Run checks
+        run: make check
+
+      - name: Run unit tests
+        run: make test
+
+      - name: Run fast property-based tests
+        run: make property-test
 
   release:
     # Une fois mergé dans main, construire les artefacts de release et la documentation.
@@ -27,6 +33,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Run unit tests
+        run: make test
 
       - name: Install Typst compiler
         run: cargo install --locked typst-cli
