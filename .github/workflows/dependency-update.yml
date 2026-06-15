@@ -19,8 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install dependency update tool
-        run: cargo install --locked cargo-edit
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Install cargo-edit
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          crate: cargo-edit
+          version: v0.13.7
 
       - name: Update dependencies
         shell: bash

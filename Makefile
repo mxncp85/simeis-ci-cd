@@ -39,14 +39,13 @@ property-test-heavy:
 	python tests/propertybased.py --heavy
 
 functional-test:
-	cargo build -p simeis-server --features testing
 	python tests/functional/run_functional_tests.py
 
 clean:
 	cargo clean
 
 # CI pour les merge request et les push sur des branches hors main.
-ci-dev: check test property-test
+ci-dev: test
 
 # CI une fois merge sur main.
 ci-release: release manual

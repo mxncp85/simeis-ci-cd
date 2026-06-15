@@ -1,0 +1,40 @@
+name: Setup Rust
+description: Install Rust toolchain with Cargo build cache
+inputs:
+  toolchain:
+    description: Rust toolchain version
+    required: false
+    default: stable
+  components:
+    description: Space-separated rustup components (e.g. clippy rustfmt)
+    required: false
+    default: ""
+  cache-key:
+    description: Cache key suffix (use when feature sets differ)
+    required: false
+    default: stable
+runs:
+  using: composite
+  steps:
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ inputs.cache-key }}-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-${{ inputs.cache-key }}-
+          ${{ runner.os }}-cargo-
+
+    - name: Install Rust toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        rustup toolchain install "${{ inputs.toolchain }}" --profile minimal
+        rustup default "${{ inputs.toolchain }}"
+        if [ -n "${{ inputs.components }}" ]; then
+          rustup component add ${{ inputs.components }}
+        fi
