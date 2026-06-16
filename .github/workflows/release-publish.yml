@@ -95,8 +95,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       # Étape 5 : créer ou mettre à jour la release GitHub avec l'action demandée.
+      # Image ghcr.io : évite le build Docker local (base Debian buster obsolète en v1.1.3).
       - name: Create or update GitHub Release
-        uses: mini-bomba/create-github-release@v1.1.3
+        uses: docker://ghcr.io/mini-bomba/create-github-release:v1.1.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.meta.outputs.tag }}
