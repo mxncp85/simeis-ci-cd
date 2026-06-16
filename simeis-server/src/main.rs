@@ -21,7 +21,7 @@ fn start_game_thread(
 ) -> JoinHandle<()> {
     log::debug!("Starting the game thread on compio runtime");
     std::thread::spawn(move || {
-        let rt = compio::runtime::Runtime::new().unwrap();
+        let rt = compio_runtime::Runtime::new().unwrap();
         rt.block_on(data.start(stop, sysrecv));
         rt.run();
     })
