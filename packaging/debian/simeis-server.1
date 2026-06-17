@@ -1,0 +1,59 @@
+.\" Page de manuel Debian pour simeis-server (format groff/nroff).
+.\" Contact: simeis@example.com pour signaler des erreurs.
+.TH SIMEIS-SERVER 1 "26 May 2026" "0.1.3" "Simeis Manual"
+.SH NAME
+simeis-server \- serveur du jeu multijoueur Simeis
+.SH SYNOPSIS
+.B simeis-server
+.SH DESCRIPTION
+Simeis est un jeu multijoueur piloté entièrement par API HTTP.
+Le programme \fBsimeis-server\fR lance le serveur de jeu : il gère les joueurs,
+les stations spatiales, les vaisseaux, le marché et les interactions de la
+galaxie.
+.PP
+Pour jouer, un client doit d'abord créer un joueur via l'endpoint
+\fB/player/new/{name}\fR, puis utiliser la clé d'authentification reçue dans
+l'en-tête HTTP \fBSimeis-Key\fR pour toutes les requêtes suivantes.
+.PP
+Par défaut, le serveur écoute sur le port \fB8080\fR.
+.SH OPTIONS
+Aucune option en ligne de commande n'est disponible pour le moment.
+.SH ENVIRONMENT
+.TP
+.B RUST_LOG
+Niveau de journalisation du serveur (ex: \fBinfo\fR, \fBdebug\fR).
+.SH FILES
+.TP
+.B /usr/bin/simeis-server
+Binaire principal du serveur.
+.TP
+.B /etc/systemd/system/simeis-server.service
+Fichier unité systemd du service.
+.TP
+.B /usr/share/doc/simeis/
+Documentation Debian du paquet (copyright, changelog).
+.SH EXAMPLES
+Tester que le serveur répond :
+.PP
+.EX
+curl http://127.0.0.1:8080/ping
+.EE
+.PP
+Démarrer ou consulter le service systemd :
+.PP
+.EX
+sudo systemctl start simeis-server
+sudo systemctl status simeis-server
+.EE
+.SH SEE ALSO
+.BR curl (1),
+.BR systemctl (1),
+.BR man (7)
+.SH BUGS
+Aucun bogue connu pour le moment.
+.SH AUTHOR
+Simeis Team <simeis@example.com>
+.SH COPYRIGHT
+Copyright \(co 2026 Simeis Team.
+Distribué sous licence MIT.
+Voir \fI/usr/share/doc/simeis/copyright\fR pour plus de détails.

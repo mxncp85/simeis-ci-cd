@@ -7,7 +7,7 @@ SERVER_BIN_RELEASE := target/release/simeis-server
 MANUAL_SRC := doc/manual.typ
 MANUAL_OUT := doc/manual.pdf
 
-.PHONY: all debug release manual check test property-test property-test-heavy functional-test clean show-rustflags ci-dev ci-release
+.PHONY: all debug release manual check test property-test property-test-heavy functional-test deb clean show-rustflags ci-dev ci-release
 
 all: debug
 
@@ -40,6 +40,11 @@ property-test-heavy:
 
 functional-test:
 	python tests/functional/run_functional_tests.py
+
+# Paquet Debian (nécessite un binaire release déjà compilé).
+deb:
+	chmod +x packaging/build-deb.sh
+	./packaging/build-deb.sh $(or $(VERSION),0.1.3) $(or $(ARCH),amd64)
 
 clean:
 	cargo clean
