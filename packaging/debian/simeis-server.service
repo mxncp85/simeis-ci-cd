@@ -1,0 +1,37 @@
+# Fichier systemd pour simeis-server (TP5).
+# Installé dans /etc/systemd/system/simeis-server.service par le paquet .deb.
+#
+
+[Unit]
+# Description affichée par systemctl status.
+Description=Simeis game server
+Documentation=man:simeis-server(1)
+
+# Démarrer après que le réseau soit disponible (équivalent After=network.target).
+After=network-online.target
+Wants=network-online.target
+
+# Désactive la limite de redémarrages (évite que systemd abandonne après 5 échecs).
+StartLimitIntervalSec=0
+
+[Service]
+# Le processus principal est le binaire lui-même.
+Type=simple
+
+# Exécuter sous l'utilisateur système dédié (créé dans postinst).
+User=simeis
+Group=simeis
+
+# Commande lancée au démarrage du service.
+ExecStart=/usr/bin/simeis-server
+
+# Redémarrer automatiquement si le serveur plante.
+Restart=always
+RestartSec=3
+
+# Sécurité : empêche l'élévation de privilèges.
+NoNewPrivileges=true
+
+[Install]
+# Active le service au démarrage de la machine (via systemctl enable).
+WantedBy=multi-user.target

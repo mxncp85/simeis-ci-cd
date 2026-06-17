@@ -1,0 +1,15 @@
+#!/bin/sh
+# Script pre-suppression : arrête le service avant retrait du paquet.
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        if command -v systemctl >/dev/null 2>&1; then
+            if systemctl is-active --quiet simeis-server.service; then
+                systemctl stop simeis-server.service || true
+            fi
+        fi
+        ;;
+esac
+
+exit 0
