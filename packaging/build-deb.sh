@@ -44,19 +44,9 @@ install -m 0644 "${ROOT_DIR}/packaging/debian/changelog.Debian" \
 gzip --best -f "${PKG_ROOT}/usr/share/doc/simeis/changelog"
 gzip --best -f "${PKG_ROOT}/usr/share/doc/simeis/changelog.Debian"
 
-# control.tar.gz : métadonnées + scripts de maintenance.
-cat > "${PKG_ROOT}/DEBIAN/control" <<EOF
-Package: simeis
-Version: ${DEB_VERSION}
-Section: games
-Priority: optional
-Architecture: ${ARCH}
-Maintainer: Simeis & k4os
-Depends: cmatrix, systemd
-Description: Simeis game server
- Jeu multijoueur par API. Ce paquet installe le binaire serveur,
- la page de manuel et le service systemd associé.
-EOF
+# control.tar.gz : métadonnées (Depends: cmatrix, systemd) + scripts de maintenance.
+sed -e "s/@VERSION@/${DEB_VERSION}/" -e "s/@ARCH@/${ARCH}/" \
+    "${ROOT_DIR}/packaging/debian/DEBIAN/control.in" > "${PKG_ROOT}/DEBIAN/control"
 
 install -m 0755 "${ROOT_DIR}/packaging/debian/DEBIAN/postinst" "${PKG_ROOT}/DEBIAN/postinst"
 install -m 0755 "${ROOT_DIR}/packaging/debian/DEBIAN/prerm" "${PKG_ROOT}/DEBIAN/prerm"

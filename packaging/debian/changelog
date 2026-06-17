@@ -2,5 +2,6 @@ simeis (0.1.3-1) unstable; urgency=medium
 
   * Paquet Debian initial pour le serveur Simeis.
   * Installation du binaire, du manuel et du service systemd.
+  * Dépendance au paquet cmatrix.
 
  -- Simeis Team <simeis@example.com>  Mon, 26 May 2026 12:00:00 +0200
