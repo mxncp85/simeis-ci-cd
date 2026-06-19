@@ -1,0 +1,25 @@
+# TP5 — Image Docker du serveur Simeis.
+# Base imposée : Rust 1.85 sur Debian Bookworm.
+#
+# Note : ntex 3.9.x exige rustc >= 1.88. Le binaire est donc compilé en amont
+# par la CI (make ci-release) puis copié ici. L'image contient bien le logiciel
+# compilé, empaqueté via cette base Docker.
+
+FROM rust:1.85.0-bookworm AS builder
+
+WORKDIR /app
+
+# Binaire release produit par la CI ou par `make release` en local.
+COPY target/release/simeis-server /usr/local/bin/simeis-server
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/bin/simeis-server /usr/local/bin/simeis-server
+
+EXPOSE 8080
+USER nobody:nogroup
+ENTRYPOINT ["simeis-server"]
