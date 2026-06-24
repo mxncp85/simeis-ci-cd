@@ -52,12 +52,15 @@ jobs:
           fi
 
           VERSION="${BRANCH#release/}"
+          PKG_NAME="simeis-ci-cd"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "deb=build/deb/simeis_${VERSION}-1_amd64.deb" >> "$GITHUB_OUTPUT"
+          echo "pkg_name=$PKG_NAME" >> "$GITHUB_OUTPUT"
+          echo "deb=build/deb/${PKG_NAME}_${VERSION}-1_amd64.deb" >> "$GITHUB_OUTPUT"
           echo "docker_image=simeis-server:${VERSION}" >> "$GITHUB_OUTPUT"
           echo "docker_tar=simeis-server-${VERSION}-docker-image.tar" >> "$GITHUB_OUTPUT"
+          echo "deploy_port=9450" >> "$GITHUB_OUTPUT"
 
       # Étape 3 : compiler les artefacts importants de la release.
       - name: Setup Rust
@@ -77,6 +80,8 @@ jobs:
 
       - name: Build Debian package
         shell: bash
+        env:
+          PKG_NAME: ${{ steps.meta.outputs.pkg_name }}
         run: |
           chmod +x packaging/build-deb.sh
           ./packaging/build-deb.sh "${{ steps.meta.outputs.version }}" amd64
@@ -137,3 +142,33 @@ jobs:
             doc/swagger.json
             simeis-sdk-python.py
             ${{ steps.meta.outputs.docker_tar }}
+
+      # Étape 6 : déploiement SSH sur la VM.
+      # Variable repo : DEPLOY_SSH_HOST, DEPLOY_SERVER_PORT (9450)
+      # Secret repo    : DEPLOY_SSH_PRIVATE_KEY
+      - name: Deploy release on remote VM
+        if: vars.DEPLOY_SSH_HOST != ''
+        shell: bash
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SERVER_PORT: ${{ steps.meta.outputs.deploy_port }}
+          DEB_PATH: ${{ steps.meta.outputs.deb }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+          PKG_NAME: ${{ steps.meta.outputs.pkg_name }}
+        run: |
+          chmod +x .github/scripts/deploy_vm.sh
+          .github/scripts/deploy_vm.sh
+
+      - name: Verify remote server version
+        if: vars.DEPLOY_SSH_HOST != ''
+        shell: bash
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SERVER_PORT: ${{ steps.meta.outputs.deploy_port }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          chmod +x .github/scripts/verify_deploy.sh
+          .github/scripts/verify_deploy.sh
