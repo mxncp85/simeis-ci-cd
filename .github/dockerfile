@@ -20,6 +20,6 @@ RUN apt-get update \
 
 COPY --from=builder /usr/local/bin/simeis-server /usr/local/bin/simeis-server
 
-EXPOSE 8080
+EXPOSE 9450/tcp
 USER nobody:nogroup
 ENTRYPOINT ["simeis-server"]

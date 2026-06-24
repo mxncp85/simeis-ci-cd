@@ -44,7 +44,7 @@ functional-test:
 # Paquet Debian (nécessite un binaire release déjà compilé).
 deb:
 	chmod +x packaging/build-deb.sh
-	./packaging/build-deb.sh $(or $(VERSION),0.1.3) $(or $(ARCH),amd64)
+	./packaging/build-deb.sh $(or $(VERSION),0.1.4) $(or $(ARCH),amd64)
 
 clean:
 	cargo clean

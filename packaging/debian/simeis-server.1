@@ -1,6 +1,6 @@
 .\" Page de manuel Debian pour simeis-server (format groff/nroff).
 .\" Contact: simeis@example.com pour signaler des erreurs.
-.TH SIMEIS-SERVER 1 "26 May 2026" "0.1.3" "Simeis Manual"
+.TH SIMEIS-SERVER 1 "26 May 2026" "0.1.4" "Simeis Manual"
 .SH NAME
 simeis-server \- serveur du jeu multijoueur Simeis
 .SH SYNOPSIS
@@ -15,7 +15,7 @@ Pour jouer, un client doit d'abord créer un joueur via l'endpoint
 \fB/player/new/{name}\fR, puis utiliser la clé d'authentification reçue dans
 l'en-tête HTTP \fBSimeis-Key\fR pour toutes les requêtes suivantes.
 .PP
-Par défaut, le serveur écoute sur le port \fB8080\fR.
+Par défaut, le serveur écoute sur le port \fB9450\fR.
 .SH OPTIONS
 Aucune option en ligne de commande n'est disponible pour le moment.
 .SH ENVIRONMENT
@@ -36,7 +36,7 @@ Documentation Debian du paquet (copyright, changelog).
 Tester que le serveur répond :
 .PP
 .EX
-curl http://127.0.0.1:8080/ping
+curl http://127.0.0.1:9450/ping
 .EE
 .PP
 Démarrer ou consulter le service systemd :

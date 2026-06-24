@@ -1,4 +1,4 @@
-Package: simeis
+Package: @PKG_NAME@
 Version: @VERSION@
 Section: games
 Priority: optional
