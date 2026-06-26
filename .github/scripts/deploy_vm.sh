@@ -19,6 +19,8 @@ fi
 
 DEB_FILE="$(basename "$DEB_PATH")"
 SSH_OPTS=(-p "$DEPLOY_SSH_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes)
+# scp utilise -P (majuscule) pour le port, contrairement à ssh.
+SCP_OPTS=(-P "$DEPLOY_SSH_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes)
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
@@ -27,7 +29,7 @@ chmod 600 ~/.ssh/deploy_key
 ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
 echo "Copie du paquet vers ${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/tmp/${DEB_FILE}"
-scp "${SSH_OPTS[@]}" "$DEB_PATH" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/tmp/${DEB_FILE}"
+scp "${SCP_OPTS[@]}" "$DEB_PATH" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/tmp/${DEB_FILE}"
 
 echo "Installation sur la VM et vérification locale du service"
 ssh "${SSH_OPTS[@]}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<EOF
