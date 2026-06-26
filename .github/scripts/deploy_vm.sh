@@ -18,21 +18,42 @@ if [ ! -f "$DEB_PATH" ]; then
 fi
 
 DEB_FILE="$(basename "$DEB_PATH")"
-SSH_OPTS=(-p "$DEPLOY_SSH_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes)
+REMOTE="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+
+COMMON_OPTS=(-i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20)
+SSH_OPTS=(-p "$DEPLOY_SSH_PORT" "${COMMON_OPTS[@]}")
 # scp utilise -P (majuscule) pour le port, contrairement à ssh.
-SCP_OPTS=(-P "$DEPLOY_SSH_PORT" -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes)
+SCP_OPTS=(-P "$DEPLOY_SSH_PORT" "${COMMON_OPTS[@]}")
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
-printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+# Préserver les retours ligne de la clé (secret GitHub).
+printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key
 chmod 600 ~/.ssh/deploy_key
-ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-echo "Copie du paquet vers ${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/tmp/${DEB_FILE}"
-scp "${SCP_OPTS[@]}" "$DEB_PATH" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/tmp/${DEB_FILE}"
+if ! ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null 2>&1; then
+    echo "Clé privée SSH invalide dans DEPLOY_SSH_PRIVATE_KEY." >&2
+    exit 1
+fi
+
+ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+echo "Test connexion SSH vers ${REMOTE}:${DEPLOY_SSH_PORT}"
+if ! ssh "${SSH_OPTS[@]}" "$REMOTE" "echo SSH OK"; then
+    echo "Connexion SSH impossible depuis le runner GitHub." >&2
+    echo "Vérifiez : clé publique dans ~/.ssh/authorized_keys de ${DEPLOY_SSH_USER}," >&2
+    echo "port ${DEPLOY_SSH_PORT} ouvert vers Internet, secret DEPLOY_SSH_PRIVATE_KEY correct." >&2
+    exit 1
+fi
+
+echo "Copie du paquet vers ${REMOTE}:/tmp/${DEB_FILE}"
+if ! scp "${SCP_OPTS[@]}" "$DEB_PATH" "${REMOTE}:/tmp/${DEB_FILE}"; then
+    echo "scp a échoué (droits sur /tmp ou espace disque ?)." >&2
+    exit 1
+fi
 
 echo "Installation sur la VM et vérification locale du service"
-ssh "${SSH_OPTS[@]}" "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" bash -s <<EOF
+ssh "${SSH_OPTS[@]}" "$REMOTE" bash -s <<EOF
 set -euo pipefail
 sudo DEBIAN_FRONTEND=noninteractive apt install -y "/tmp/${DEB_FILE}"
 INSTALLED="\$(dpkg-query -W -f='\${Version}' ${PKG_NAME})"
