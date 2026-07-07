@@ -1,11 +1,15 @@
+# Contrôles qualité sur chaque PR : format Rust/Python, clippy, et présence d'une review.
+# Les jobs "quality" et "review-required" sont des status checks requis pour merger sur main.
 name: PR Quality Checks
 
+# Déclencheurs : toute PR, à l'ouverture, à chaque commit, réouverture ou "ready for review".
 on:
   pull_request:
     branches:
       - "**"
     types: [opened, synchronize, reopened, ready_for_review]
 
+# Un seul run par PR : un nouveau push annule le run précédent.
 concurrency:
   group: pr-quality-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -15,34 +19,45 @@ permissions:
   pull-requests: read
 
 jobs:
+  # Vérifie le style et la qualité statique du code (Rust + Python modifiés).
   quality:
     name: quality
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 = historique complet, nécessaire pour git diff base..head.
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      # Installe Rust avec les composants rustfmt et clippy.
+      # rustfmt pour formater le code Rust
+      # clippy pour analyser le code Rust et trouver des erreurs, mauvaises pratiques, etc.
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
           components: clippy rustfmt
 
+      # Échoue si le code Rust n'est pas formaté selon rustfmt.
       - name: Cargo fmt check
         run: cargo fmt --all -- --check
 
+      # Analyse statique Rust ; -D warnings traite les avertissements comme des erreurs.
       - name: Cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # Installe Black (formateur Python) pour les scripts de test.
       - name: Setup Black
         uses: ./.github/actions/setup-python-black
 
+      # Vérifie Black uniquement sur les fichiers .py modifiés dans la PR (pas tout le repo).
       - name: Check Python formatting (files used for tests)
         shell: bash
         run: |
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          # Liste les .py ajoutés/modifiés/renommés entre la branche cible et la PR
+          # (ACMR = Added, Copied, Modified, Renamed) ; tr met tout sur une ligne pour black.
           FILES=$(git diff --name-only --diff-filter=ACMR "${BASE_SHA}" "${HEAD_SHA}" -- '*.py' | tr '\n' ' ')
           if [ -z "$FILES" ]; then
             echo "Aucun fichier Python modifie dans cette PR."
@@ -51,12 +66,14 @@ jobs:
           echo "Verification Black sur: $FILES"
           python -m black --check $FILES
 
+  # Status check bloquant : au moins une review "APPROVED" avant merge (cf. branch protection).
   review-required:
     name: review-required
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
     steps:
+      # Interroge l'API GitHub pour compter les reviews approuvées sur cette PR.
       - name: Ensure at least one approved review exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
