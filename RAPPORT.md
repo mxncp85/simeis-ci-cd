@@ -1,6 +1,6 @@
 # Rapport CI/CD — Projet Simeis
 
-**Auteurs :** Maxence Perronié & Cedric Toe 
+**Auteurs :** Maxence PERRONIER & Cedric TOE 
 **Dépôt :** [mxncp85/simeis-ci-cd](https://github.com/mxncp85/simeis-ci-cd)
 
 ---
