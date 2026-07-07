@@ -1,48 +1,61 @@
+# Workflow CI principal : tests sur les PR, build de release sur main.
 name: CI
 
+# Déclencheurs :
+# - toute pull request (vers n'importe quelle branche)
+# - tout push sur la branche main
 on:
   pull_request:
   push:
     branches:
       - main
 
+# Évite les runs en double : si un nouveau commit arrive, annule le run précédent.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Job "dev" : exécuté sur les PR et les pushes hors main (ex. develop, feature/x).
   dev:
-    # Pour les MR et les pushes hors main
+    # Condition : PR OU push qui n'est PAS sur main.
     if: github.event_name != 'push' || github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      # Récupère le code de la branche concernée par la PR ou le push.
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Installe Rust + met en cache les dépendances Cargo.
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
 
+      # Lance tous les tests unitaires.
       - name: Run unit tests
         run: cargo test --workspace
 
+  # Job "release" : exécuté uniquement après un merge/push sur main.
   release:
-    # Une fois mergé dans main, construire les artefacts de release et la documentation.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Permission d'écriture nécessaire pour créer des tags et des releases GitHub.
     permissions:
       contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Cache séparé du job dev (clé "release") car le profil de build diffère.
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
           cache-key: release
 
+      # Re-lance les tests avant de publier (sécurité après merge).
       - name: Run unit tests
         run: cargo test --workspace
 
+      # Installe typst pour compiler doc/manual.typ → doc/manual.pdf
       - name: Install Typst compiler
         uses: ./.github/actions/install-cargo-tool
         with:
@@ -50,9 +63,12 @@ jobs:
           bin: typst
           version: v0.13.1
 
+      # Compile le binaire release + le manuel PDF (cible Makefile ci-release).
       - name: Run release targets
         run: make ci-release
 
+      # Publie un build intermédiaire sur GitHub (pas la release officielle vX.Y.Z).
+      # Tag du type build-a1b2c3d basé sur les 7 premiers caractères du commit SHA.
       - name: Publish release assets (manual + binary)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,12 +77,15 @@ jobs:
           TAG="build-${GITHUB_SHA::7}"
           TITLE="Build ${GITHUB_SHA::7}"
 
+          # Crée le tag localement puis le pousse (|| true si le tag existe déjà).
           git tag "$TAG" || true
           git push origin "$TAG" || true
 
+          # Crée la release GitHub si elle n'existe pas encore.
           gh release view "$TAG" > /dev/null 2>&1 || \
             gh release create "$TAG" --title "$TITLE" --notes "Build automatique depuis main."
 
+          # Upload le manuel PDF et le binaire compilé comme assets de la release.
           gh release upload "$TAG" \
             doc/manual.pdf \
             target/release/simeis-server \

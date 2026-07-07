@@ -1,3 +1,5 @@
+# Workflow pour configurer la protection de la branche main via l'API GitHub.
+# À lancer manuellement (workflow_dispatch) par un admin du dépôt.
 name: Enforce Branch Protection
 
 on:
@@ -10,14 +12,22 @@ jobs:
   protect-main:
     runs-on: ubuntu-latest
     steps:
+      # Applique les règles de protection sur la branche main.
       - name: Configure branch protection on main
         env:
-          # Utiliser un PAT admin (repo + administration) pour cette opération.
-          # GITHUB_TOKEN est souvent insuffisant pour modifier la protection de branche.
+          # PAT admin (repo + administration) : GITHUB_TOKEN seul ne suffit souvent pas
+          # pour modifier les branch protection rules via l'API.
           GH_TOKEN: ${{ secrets.BRANCH_PROTECTION_TOKEN }}
           REPO: ${{ github.repository }}
         shell: bash
         run: |
+          # Règles appliquées sur main :
+          # - required_status_checks : les jobs "quality", "review-required" et "check-todos"
+          #   doivent passer avant merge ; strict=true exige que la branche soit à jour.
+          # - enforce_admins : même les admins respectent ces règles.
+          # - required_pull_request_reviews : au moins 1 approbation, reviews périmées invalidées.
+          # - allow_force_pushes / allow_deletions : désactivés pour sécuriser main.
+          # - required_conversation_resolution : les commentaires de review doivent être résolus.
           cat > protection.json <<'EOF'
           {
             "required_status_checks": {
@@ -39,6 +49,7 @@ jobs:
           }
           EOF
 
+          # Envoie la configuration à l'API GitHub (PUT = créer ou remplacer).
           gh api \
             --method PUT \
             -H "Accept: application/vnd.github+json" \

@@ -1,21 +1,27 @@
+# Action composite : installe Rust et restaure le cache Cargo/target pour accélérer la CI.
 name: Setup Rust
 description: Install Rust toolchain with Cargo build cache
 inputs:
+  # Toolchain Rust à utiliser (stable, nightly, ou version précise).
   toolchain:
     description: Rust toolchain version
     required: false
     default: stable
+  # Composants rustup optionnels (ex. "clippy rustfmt").
   components:
     description: Space-separated rustup components (e.g. clippy rustfmt)
     required: false
     default: ""
+  # Suffixe de clé de cache : utile pour séparer les builds selon features/jobs.
   cache-key:
     description: Cache key suffix (use when feature sets differ)
     required: false
     default: stable
 runs:
+  # Composite = bloc de steps réutilisable depuis plusieurs workflows.
   using: composite
   steps:
+    # Cache des dépendances Cargo et des artefacts de compilation.
     - name: Cache Cargo dependencies
       uses: actions/cache@v4
       with:
@@ -24,11 +30,13 @@ runs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
+        # Clé basée sur OS + profil de cache + contenu de Cargo.lock.
         key: ${{ runner.os }}-cargo-${{ inputs.cache-key }}-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-${{ inputs.cache-key }}-
           ${{ runner.os }}-cargo-
 
+    # Installe la toolchain, la définit par défaut, puis ajoute les composants demandés.
     - name: Install Rust toolchain
       shell: bash
       run: |
