@@ -1,5 +1,9 @@
+# Vérifie qu'une PR vers release/* provient bien de main ou d'une branche bug/*.
+# Sinon : commentaire explicatif + fermeture automatique de la PR.
 name: PR Release Source Guard
 
+# pull_request_target : s'exécute dans le contexte de la branche cible (release/*),
+# ce qui permet de commenter/fermer la PR même si elle vient d'un fork.
 on:
   pull_request_target:
     branches:
@@ -7,12 +11,13 @@ on:
     types: [opened, reopened, synchronize, edited, ready_for_review]
 
 permissions:
-  pull-requests: write
+  pull-requests: write  # nécessaire pour gh pr comment et gh pr close
 
 jobs:
   validate-release-pr-source:
     runs-on: ubuntu-latest
     steps:
+      # Seules main et les branches bug/* sont des sources valides pour une release.
       - name: Validate source branch for release PRs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -26,6 +31,7 @@ jobs:
             exit 0
           fi
 
+          # Source interdite : informer l'auteur puis fermer la PR.
           MESSAGE="PR fermée automatiquement: une PR vers release/x doit venir de main ou bug/x."
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$MESSAGE"
           gh pr close "$PR_NUMBER" --repo "$REPO"

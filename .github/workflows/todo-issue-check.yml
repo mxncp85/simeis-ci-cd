@@ -1,31 +1,38 @@
+# Vérifie que chaque TODO ajouté dans le code référence une issue GitHub ouverte.
+# Format attendu : TODO (#123)
 name: TODO Issue Check
 
 on:
+  # Contrôle sur toutes les PR.
   pull_request:
     branches:
       - "**"
+  # Contrôle aussi sur push direct vers les branches protégées.
   push:
     branches:
       - main
       - "release/**"
 
+# Un seul run par PR ou push ; un nouveau commit annule le précédent.
 concurrency:
   group: todo-check-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  issues: read
+  issues: read # nécessaire pour vérifier l'état des issues référencées
 
 jobs:
   check-todos:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 pour comparer correctement les commits.
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      # Analyse les lignes ajoutées contenant TODO et valide la référence d'issue.
       - name: Validate TODO issue references
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,6 +41,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Différence de commits selon le type d'événement.
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
             HEAD_SHA="${{ github.event.pull_request.head.sha }}"
@@ -42,12 +50,15 @@ jobs:
             HEAD_SHA="${{ github.sha }}"
           fi
 
+          # Cas particulier (premier commit / base inconnue) : on n'échoue pas.
           if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "0000000000000000000000000000000000000000" ]; then
             echo "Impossible de determiner un commit de base fiable. Controle TODO ignore."
             exit 0
           fi
 
           echo "Analyse des TODO introduits entre ${BASE_SHA} et ${HEAD_SHA}."
+          # Récupère uniquement les lignes ajoutées contenant TODO
+          # dans les fichiers source/doc/config ciblés.
           TODO_LINES=$(
             git diff --unified=0 "${BASE_SHA}" "${HEAD_SHA}" -- \
               '*.rs' '*.py' '*.js' '*.ts' '*.tsx' '*.jsx' '*.md' '*.yml' '*.yaml' '*.toml' \
@@ -70,12 +81,14 @@ jobs:
           fi
 
           FAILED=0
+          # Vérifie que chaque TODO suit le format TODO (#N) et que l'issue est ouverte.
           while IFS= read -r ENTRY; do
             [ -z "$ENTRY" ] && continue
 
             LINE_TEXT="${ENTRY#*:?: }"
             if [[ "$LINE_TEXT" =~ TODO[[:space:]]+\(#([0-9]+)\) ]]; then
               ISSUE_NUMBER="${BASH_REMATCH[1]}"
+              # Retourne open/closed ; "missing" si l'issue n'existe pas/est inaccessible.
               ISSUE_STATE=$(gh api "repos/${REPO}/issues/${ISSUE_NUMBER}" --jq '.state' 2>/dev/null || echo "missing")
 
               if [ "$ISSUE_STATE" = "missing" ]; then
@@ -95,3 +108,5 @@ jobs:
             echo "Des TODO non conformes ont ete detectes."
             exit 1
           fi
+
+          echo "Tous les TODO ajoutes referencent des issues ouvertes."

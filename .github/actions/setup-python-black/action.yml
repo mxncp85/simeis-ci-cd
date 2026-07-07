@@ -1,16 +1,21 @@
+# Action composite : prépare Black pour les vérifications de formatage Python en CI.
 name: Setup Python Black
 description: Install Black with pip cache
 runs:
+  # Composite = suite de steps réutilisable depuis plusieurs workflows.
   using: composite
   steps:
+    # Cache local pip pour accélérer les installations sur les runs suivants.
     - name: Cache pip
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
+        # Clé dédiée à Black ; changer le suffixe (v1 -> v2) force un nouveau cache.
         key: ${{ runner.os }}-pip-black-v1
         restore-keys: |
           ${{ runner.os }}-pip-
 
+    # Installe/met à jour pip puis Black (outil de formatage Python).
     - name: Install Black
       shell: bash
       run: python -m pip install --upgrade pip black

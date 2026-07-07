@@ -1,24 +1,29 @@
+# Après merge d'un correctif bug/x, crée automatiquement des PR vers les branches release/*
+# ciblées par les labels propagate:release/x posés sur la PR d'origine.
 name: Propagate Bugfix To Releases
 
+# Se déclenche à chaque fermeture de PR (merge ou abandon) ;
 on:
   pull_request:
     types: [closed]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: write       # push des branches de propagation
+  pull-requests: write  # création des PR de propagation
 
 jobs:
   propagate:
-    # Trigger uniquement si PR mergee depuis bug/x.
+    # Uniquement si la PR est mergée et venait d'une branche bug/*.
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'bug/')
     runs-on: ubuntu-latest
     steps:
+      # Historique complet pour fetch/checkout des branches distantes.
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
+      # Pour chaque label propagate:release/x.y.z, ouvre une PR bug/x -> release/x.y.z.
       - name: Create propagation PRs for each propagate:release/x label
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -27,14 +32,17 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         shell: bash
         run: |
+          # Récupère tous les labels de la PR mergée.
           LABELS=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json labels --jq '.labels[].name')
           MATCHED=0
 
           while IFS= read -r LABEL; do
+            # Ex. label "propagate:release/0.1.4" -> branche cible release/0.1.4
             if [[ "$LABEL" =~ ^propagate:(release/.+)$ ]]; then
               TARGET_BRANCH="${BASH_REMATCH[1]}"
               MATCHED=1
 
+              # Branche intermédiaire : propagate/bug-foo-to-release-0.1.4 (slashes remplacés par des tirets).
               PROP_BRANCH="propagate/${SOURCE_BRANCH//\//-}-to-${TARGET_BRANCH//\//-}"
               git fetch origin "$SOURCE_BRANCH" "$TARGET_BRANCH"
               git checkout -B "$PROP_BRANCH" "origin/$SOURCE_BRANCH"

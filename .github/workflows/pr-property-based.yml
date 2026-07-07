@@ -1,12 +1,14 @@
+# Lance des tests property-based rapides sur chaque PR.
 name: PR Property-Based Tests
 
+# Déclencheurs : toute PR, à l'ouverture, à chaque commit, réouverture ou "ready for review".
 on:
   pull_request:
     branches:
       - "**"
     types: [opened, synchronize, reopened, ready_for_review]
 
-# Interrompt le run en cours si un nouveau commit arrive sur la PR.
+# Un seul run par PR : un nouveau push annule le run précédent.
 concurrency:
   group: property-based-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -15,11 +17,14 @@ permissions:
   contents: read
 
 jobs:
+  # Version rapide (--time 3) : suffisante pour la CI PR ; la version lourde est ailleurs.
   property-based-fast:
     runs-on: ubuntu-latest
     steps:
+      # Récupère le code de la branche de la PR.
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Exécute tests/propertybased.py pendant 3 secondes par propriété testée.
       - name: Run fast property-based tests
         run: python tests/propertybased.py --time 3

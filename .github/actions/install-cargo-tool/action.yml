@@ -1,20 +1,29 @@
+# Action : installe un binaire Cargo (ex. cargo-tarpaulin) avec un cache
+# pour éviter des téléchargements répétitifs à chaque run GitHub Actions.
 name: Install Cargo tool
 description: Install a cargo binary with cache to avoid repeated downloads
 inputs:
+  # Nom du package à installer via `cargo install` (par ex. `cargo-tarpaulin`).
   crate:
-    description: Crate name to install (e.g. cargo-tarpaulin)
+    description: Package name to install (e.g. cargo-tarpaulin)
     required: true
+  # Nom du binaire installé (optionnel) si le binaire n'a pas le même nom que le package.
+  # Exemple : `typst-cli` installe un binaire appelé `typst`.
   bin:
-    description: Installed binary name if different from crate (e.g. typst for typst-cli)
+    description: Installed binary name if different from package (e.g. typst for typst-cli)
     required: false
     default: ""
+  # Version à pinner pour rendre la clé de cache stable.
+  # Par défaut, on utilise `latest` (et la clé de cache suivra).
   version:
     description: Optional version pin used in cache key
     required: false
     default: latest
 runs:
+  # Utilise une composition d'étapes pour optimiser les performances.
   using: composite
   steps:
+    # Détermine le nom du binaire attendu dans le dossier `~/.cargo/bin/`.
     - name: Resolve binary name
       id: meta
       shell: bash
@@ -25,6 +34,7 @@ runs:
           echo "bin=${{ inputs.crate }}" >> "$GITHUB_OUTPUT"
         fi
 
+    # Stocke/restaure le binaire dans un cache pour éviter des installations répétées.
     - name: Cache cargo tool
       id: tool-cache
       uses: actions/cache@v4
@@ -33,8 +43,10 @@ runs:
           ~/.cargo/bin/${{ steps.meta.outputs.bin }}
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
+        # La clé inclut l'OS, le package et la version pour séparer les caches.
         key: ${{ runner.os }}-cargo-bin-${{ inputs.crate }}-${{ inputs.version }}
 
+    # N'installe réellement le package que si le cache n'a pas été trouvé.
     - name: Install cargo tool
       if: steps.tool-cache.outputs.cache-hit != 'true'
       shell: bash

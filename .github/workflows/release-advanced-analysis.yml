@@ -1,10 +1,14 @@
+# Analyses approfondies sur les branches release/* avant publication :
+# tests lourds, property-based longs, audit de sécurité et dépendances inutilisées.
 name: Release Advanced Analysis
 
+# Déclenché à chaque push sur une branche release/x.y.z.
 on:
   push:
     branches:
       - "release/**"
 
+# Un seul run par branche release : un nouveau push annule le précédent.
 concurrency:
   group: release-analysis-${{ github.ref }}
   cancel-in-progress: true
@@ -13,28 +17,34 @@ permissions:
   contents: read
 
 jobs:
+  # Tests Rust longs + scénarios fonctionnels (feature heavy-testing).
   rust-heavy-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Cache Cargo séparé pour ne pas mélanger avec la CI PR légère.
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
           cache-key: heavy-testing
 
+      # Active les tests marqués heavy-testing.
       - name: Run unit tests with heavy-testing feature
         run: cargo test --workspace --features heavy-testing
 
+      # Compile le serveur avant les tests fonctionnels (make ne rebuild pas si déjà fait).
       - name: Build server for functional tests
         run: cargo build -p simeis-server --features heavy-testing
 
+      # Scénarios utilisateur bout-en-bout ; SIMEIS_SKIP_BUILD réutilise le binaire ci-dessus.
       - name: Run functional user scenarios
         env:
           SIMEIS_SKIP_BUILD: "1"
         run: make functional-test
 
+  # Version longue des tests property-based (plus de temps par propriété qu'en PR).
   property-heavy:
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +54,7 @@ jobs:
       - name: Run heavy property-based tests
         run: python tests/propertybased.py --heavy
 
+  # Vérifie les vulnérabilités connues (cargo-audit) et les deps mortes (cargo-udeps).
   security-audit:
     runs-on: ubuntu-latest
     steps:
@@ -53,6 +64,7 @@ jobs:
       - name: Setup Rust stable
         uses: ./.github/actions/setup-rust
 
+      # cargo-udeps nécessite le toolchain nightly pour analyser le workspace.
       - name: Install nightly toolchain
         shell: bash
         run: rustup toolchain install nightly --profile minimal
@@ -69,8 +81,10 @@ jobs:
           crate: cargo-udeps
           version: v0.1.57
 
+      # Analyse les dépendances pour trouver des vulnérabilités.
       - name: Audit dependencies for vulnerabilities
         run: cargo audit
 
+      # Analyse les dépendances pour trouver les dépendances inutilisées.
       - name: Check unused dependencies
         run: cargo +nightly udeps --workspace --all-targets
