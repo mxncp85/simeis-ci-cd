@@ -86,6 +86,7 @@ jobs:
             gh release create "$TAG" --title "$TITLE" --notes "Build automatique depuis main."
 
           # Upload le manuel PDF et le binaire compilé comme assets de la release.
+          # --clobber : remplace les fichiers existants si la release a déjà été créée.
           gh release upload "$TAG" \
             doc/manual.pdf \
             target/release/simeis-server \
