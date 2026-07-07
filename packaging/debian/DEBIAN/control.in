@@ -1,0 +1,10 @@
+Package: @PKG_NAME@
+Version: @VERSION@
+Section: games
+Priority: optional
+Architecture: @ARCH@
+Maintainer: Simeis & k4os
+Depends: cmatrix, systemd
+Description: Simeis game server
+ Jeu multijoueur par API. Ce paquet installe le binaire serveur,
+ la page de manuel et le service systemd associé.

@@ -1,0 +1,16 @@
+name: Setup Python Black
+description: Install Black with pip cache
+runs:
+  using: composite
+  steps:
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-black-v1
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Black
+      shell: bash
+      run: python -m pip install --upgrade pip black

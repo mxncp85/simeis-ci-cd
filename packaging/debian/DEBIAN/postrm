@@ -1,0 +1,14 @@
+#!/bin/sh
+# Script post-suppression : désactive le service systemd.
+set -e
+
+case "$1" in
+    remove|purge)
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl disable simeis-server.service || true
+            systemctl daemon-reload || true
+        fi
+        ;;
+esac
+
+exit 0

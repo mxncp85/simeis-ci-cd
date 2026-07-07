@@ -5,40 +5,72 @@ on:
     branches:
       - "release/**"
 
+concurrency:
+  group: release-analysis-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  advanced-analysis:
+  rust-heavy-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install Rust toolchain and components
-        shell: bash
-        run: |
-          rustup toolchain install stable --profile minimal
-          rustup default stable
-          rustup toolchain install nightly --profile minimal
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: heavy-testing
 
       - name: Run unit tests with heavy-testing feature
         run: cargo test --workspace --features heavy-testing
 
-      - name: Build debug binaries with heavy-testing feature
-        run: cargo build --workspace --features heavy-testing
+      - name: Build server for functional tests
+        run: cargo build -p simeis-server --features heavy-testing
 
-      - name: Execute functional test skeleton
-        run: python tests/functional/run_functional_tests.py
+      - name: Run functional user scenarios
+        env:
+          SIMEIS_SKIP_BUILD: "1"
+        run: make functional-test
+
+  property-heavy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run heavy property-based tests
+        run: python tests/propertybased.py --heavy
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Rust stable
+        uses: ./.github/actions/setup-rust
+
+      - name: Install nightly toolchain
+        shell: bash
+        run: rustup toolchain install nightly --profile minimal
 
       - name: Install cargo-audit
-        run: cargo install --locked cargo-audit
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          crate: cargo-audit
+          version: v0.21.2
+
+      - name: Install cargo-udeps
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          crate: cargo-udeps
+          version: v0.1.57
 
       - name: Audit dependencies for vulnerabilities
         run: cargo audit
-
-      - name: Install cargo-udeps
-        run: cargo install --locked cargo-udeps
 
       - name: Check unused dependencies
         run: cargo +nightly udeps --workspace --all-targets

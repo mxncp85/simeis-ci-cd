@@ -1,0 +1,8 @@
+simeis-ci-cd (0.1.4-1) unstable; urgency=medium
+
+  * Paquet Debian initial pour le serveur Simeis.
+  * Installation du binaire, du manuel et du service systemd.
+  * Dépendance au paquet cmatrix.
+  * Ajout du Déploiement automatisé
+
+ -- Simeis Team <simeis@example.com>  Mon, 24 Jun 2026 12:00:00 +0200

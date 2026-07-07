@@ -1,0 +1,25 @@
+name: PR Property-Based Tests
+
+on:
+  pull_request:
+    branches:
+      - "**"
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Interrompt le run en cours si un nouveau commit arrive sur la PR.
+concurrency:
+  group: property-based-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  property-based-fast:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Run fast property-based tests
+        run: python tests/propertybased.py --time 3

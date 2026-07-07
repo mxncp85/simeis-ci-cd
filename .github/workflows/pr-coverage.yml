@@ -1,0 +1,65 @@
+name: PR Code Coverage
+
+on:
+  pull_request:
+    branches:
+      - "**"
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-coverage-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+
+      - name: Install cargo-tarpaulin
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          crate: cargo-tarpaulin
+          version: v0.32.8
+
+      - name: Measure workspace coverage
+        id: tarpaulin
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUTPUT=$(cargo tarpaulin --workspace --ignore-tests 2>&1 | tee tarpaulin.log)
+          PERCENT=$(echo "$OUTPUT" | grep -Eo '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')
+          if [ -z "$PERCENT" ]; then
+            echo "Impossible d'extraire le pourcentage de coverage."
+            exit 1
+          fi
+          echo "percent=$PERCENT" >> "$GITHUB_OUTPUT"
+          echo "Coverage totale: ${PERCENT}%"
+
+      - name: Add label when coverage is below 50%
+        if: ${{ steps.tarpaulin.outputs.percent < 50 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --add-label "not enough tests"
+
+      - name: Remove label when coverage is sufficient
+        if: ${{ steps.tarpaulin.outputs.percent >= 50 }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --remove-label "not enough tests" || true

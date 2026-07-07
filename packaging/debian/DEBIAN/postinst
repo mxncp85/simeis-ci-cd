@@ -1,0 +1,38 @@
+#!/bin/sh
+# Script post-installation du paquet simeis (TP5).
+# Exécuté automatiquement par dpkg après: apt install ./simeis_*.deb
+set -e
+
+case "$1" in
+    configure)
+        # 1) Créer l'utilisateur système dédié "simeis".
+        if ! id simeis >/dev/null 2>&1; then
+            useradd --system --no-create-home --shell /usr/sbin/nologin simeis
+        fi
+
+        # 2) Vérifier les droits du binaire installé dans /usr/bin.
+        #    (le fichier est posé par le .deb ; on fixe owner/permissions ici)
+        if [ -f /usr/bin/simeis-server ]; then
+            chown root:root /usr/bin/simeis-server
+            chmod 755 /usr/bin/simeis-server
+        fi
+
+        # 3) Mettre à jour l'index des pages de manuel installées dans
+        #    /usr/share/man/man1/simeis-server.1.gz
+        if command -v mandb >/dev/null 2>&1; then
+            mandb -q || true
+        fi
+
+        # 4) Recharger systemd pour prendre en compte
+        #    /etc/systemd/system/simeis-server.service
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl daemon-reload
+
+            # 5) Autoriser au démarrage (enable) et démarrer le service.
+            systemctl enable simeis-server.service
+            systemctl start simeis-server.service || true
+        fi
+        ;;
+esac
+
+exit 0

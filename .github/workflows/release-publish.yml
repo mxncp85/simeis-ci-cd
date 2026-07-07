@@ -1,0 +1,174 @@
+name: Release Publish
+
+# Étape 3 du TP : publier/mettre à jour la release après merge sur release/x.
+on:
+  # Déclenché quand les tests lourds ont réussi (merge PR sur release/x).
+  workflow_run:
+    workflows: ["Release Advanced Analysis"]
+    types: [completed]
+
+  # Permet de relancer manuellement depuis l'onglet Actions.
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        description: "Branche release (ex: release/0.1.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    # Ne publie que si les tests lourds sont verts et que la branche est release/x.
+    if: >
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'release/'))
+    runs-on: ubuntu-latest
+    steps:
+      # Étape 1 : récupérer le code de la branche release concernée.
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_branch || github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      # Étape 2 : déduire version/tag à partir du nom de branche release/x.y.z.
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${{ github.event.inputs.release_branch }}"
+          else
+            BRANCH="${{ github.event.workflow_run.head_branch }}"
+          fi
+
+          if [[ ! "$BRANCH" =~ ^release/ ]]; then
+            echo "Branche invalide: $BRANCH (attendu: release/x)"
+            exit 1
+          fi
+
+          VERSION="${BRANCH#release/}"
+          PKG_NAME="simeis-ci-cd"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "pkg_name=$PKG_NAME" >> "$GITHUB_OUTPUT"
+          echo "deb=build/deb/${PKG_NAME}_${VERSION}-1_amd64.deb" >> "$GITHUB_OUTPUT"
+          echo "docker_image=simeis-server:${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "docker_tar=simeis-server-${VERSION}-docker-image.tar" >> "$GITHUB_OUTPUT"
+          echo "deploy_port=9450" >> "$GITHUB_OUTPUT"
+
+      # Étape 3 : compiler les artefacts importants de la release.
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key: release-${{ steps.meta.outputs.version }}
+
+      - name: Install Typst compiler
+        uses: ./.github/actions/install-cargo-tool
+        with:
+          crate: typst-cli
+          bin: typst
+          version: v0.13.1
+
+      - name: Build release artefacts
+        run: make ci-release
+
+      - name: Build Debian package
+        shell: bash
+        env:
+          PKG_NAME: ${{ steps.meta.outputs.pkg_name }}
+        run: |
+          chmod +x packaging/build-deb.sh
+          ./packaging/build-deb.sh "${{ steps.meta.outputs.version }}" amd64
+
+      - name: Prepare SDK artefact
+        shell: bash
+        run: cp sdk/python.py simeis-sdk-python.py
+
+      # Étape 3b : construire l'image Docker et l'exporter en archive tar.
+      - name: Build Docker image
+        shell: bash
+        run: |
+          docker build \
+            -f .github/dockerfile \
+            -t "${{ steps.meta.outputs.docker_image }}" \
+            .
+
+      - name: Export Docker image archive
+        shell: bash
+        run: |
+          docker image save \
+            "${{ steps.meta.outputs.docker_image }}" \
+            -o "${{ steps.meta.outputs.docker_tar }}"
+
+      # Étape 4 : générer le changelog (Features / Bugfix / Autre).
+      - name: Generate changelog from merged PRs
+        id: changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_BRANCH: ${{ steps.meta.outputs.branch }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+          OUTPUT_PATH: release-notes.md
+        shell: bash
+        run: |
+          python .github/scripts/generate_release_changelog.py
+          {
+            echo "body<<EOF"
+            cat release-notes.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # Étape 5 : créer ou mettre à jour la release GitHub avec l'action demandée.
+      # Image ghcr.io : évite le build Docker local (base Debian buster obsolète en v1.1.3).
+      - name: Create or update GitHub Release
+        uses: docker://ghcr.io/mini-bomba/create-github-release:v1.1.3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.meta.outputs.tag }}
+          name: Simeis ${{ steps.meta.outputs.tag }}
+          body: ${{ steps.changelog.outputs.body }}
+          target_commit: ${{ steps.meta.outputs.branch }}
+          clear_attachments: true
+          files: |
+            target/release/simeis-server
+            ${{ steps.meta.outputs.deb }}
+            doc/manual.pdf
+            doc/swagger.json
+            simeis-sdk-python.py
+            ${{ steps.meta.outputs.docker_tar }}
+
+      # Étape 6 : déploiement SSH sur la VM.
+      # Variable repo : DEPLOY_SSH_HOST, DEPLOY_SERVER_PORT (9450)
+      # Secret repo    : DEPLOY_SSH_PRIVATE_KEY
+      - name: Deploy release on remote VM
+        if: vars.DEPLOY_SSH_HOST != ''
+        shell: bash
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ vars.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SERVER_PORT: ${{ steps.meta.outputs.deploy_port }}
+          DEB_PATH: ${{ steps.meta.outputs.deb }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+          PKG_NAME: ${{ steps.meta.outputs.pkg_name }}
+        run: |
+          chmod +x .github/scripts/deploy_vm.sh
+          .github/scripts/deploy_vm.sh
+
+      - name: Verify remote server version
+        if: vars.DEPLOY_SSH_HOST != ''
+        shell: bash
+        env:
+          DEPLOY_SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+          DEPLOY_SERVER_PORT: ${{ steps.meta.outputs.deploy_port }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          chmod +x .github/scripts/verify_deploy.sh
+          .github/scripts/verify_deploy.sh

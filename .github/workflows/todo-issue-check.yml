@@ -9,6 +9,10 @@ on:
       - main
       - "release/**"
 
+concurrency:
+  group: todo-check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   issues: read
