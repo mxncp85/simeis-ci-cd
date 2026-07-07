@@ -324,3 +324,12 @@ docker run --rm -p 9450:9450 simeis-server:0.1.4
 La chaîne CI/CD de Simeis couvre l’ensemble du cycle : **qualité et tests rapides sur PR**, **analyse approfondie avant release**, **publication multi-artefacts**, et **déploiement vérifié** sur une VM distante (implémenté dans le workflow, mais bloqué en pratique par l’authentification SSH vers la VM au moment de la rédaction de ce rapport).
 
 Les choix privilégient la **simplicité** (scripts bash, `gh`, `dpkg-deb`) et la **traçabilité** (changelog depuis les PR, labels de couverture, garde-fous sur les branches release), tout en restant conformes aux contraintes pédagogiques du projet (peu d’actions marketplace, code commenté pour le correcteur).
+
+
+## 17. Conclusion personnelle
+
+Ce projet nous a permis de mieux comprendre le fonctionnement d’une chaîne CI/CD complète, en allant au-delà d’exercices isolés pour manipuler un processus proche d’un environnement réel de développement. Nous avons pu mettre en place et comprendre les différentes étapes du cycle, de la validation du code sur les Pull Requests jusqu’à la publication et au déploiement d’artefacts.
+
+Nous avons travaillé sur la gestion des branches et des règles associées, l’automatisation des workflows GitHub Actions avec du parallélisme et du cache, ainsi que l’intégration de plusieurs niveaux de tests (unitaires, fonctionnels, tests par propriétés, couverture et sécurité). Il nous a permis de mieux appréhender l’importance de la traçabilité, notamment à travers la génération de changelogs, le suivi de la qualité du code et la sécurisation des étapes de livraison.
+
+Enfin, cette expérience nous a montré les limites et les points d’amélioration d’une chaîne CI/CD, comme la gestion des erreurs lors des opérations automatiques, la stratégie de versionnement des artefacts ou encore la maintenance des ressources générées. Elle m’a donné une vision plus concrète des pratiques DevOps et de leur rôle dans la fiabilisation du développement logiciel.
