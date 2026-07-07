@@ -297,7 +297,6 @@ Pour éviter la duplication dans les workflows :
 1. **MSRV Rust / ntex :** compilation impossible dans `rust:1.85.0-bookworm` → copie du binaire pré-compilé.
 2. **Authentification SSH CI (TP7) :** la clé publique sur la VM doit correspondre exactement à la clé privée du secret GitHub, pour le **bon utilisateur** (`student`, pas `ko`). À ce jour, malgré la génération correcte des artefacts et la configuration des scripts de déploiement, la connexion depuis les runners GitHub échoue toujours (`Permission denied (publickey)`). Plusieurs pistes ont été testées (utilisateur, paire de clés, format du secret, options `scp`/`ssh`) sans résolution complète.
 3. **scp vs ssh :** option port différente (`-P` vs `-p`).
-4. **Édition Rust :** une valeur `edition = "2026"` invalide a cassé `cargo test` — corrigée en `2021`.
 
 ---
 
